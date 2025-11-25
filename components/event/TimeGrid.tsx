@@ -70,71 +70,57 @@ export function TimeGrid({
     setSelectedSlots(newSet);
   }, [getSlotKey, selectedSlots, setSelectedSlots]);
 
-  // Mouse handlers - support both click and drag
+  // Track if we just handled a touch event (to prevent mouse event duplication)
+  const justTouched = useRef(false);
+
+  // Mouse handlers - support both click and drag (desktop only)
   const handleMouseDown = (dateIndex: number, timeIndex: number) => {
+    // Skip if this was triggered by a touch (mobile browsers fire both)
+    if (justTouched.current) {
+      justTouched.current = false;
+      return;
+    }
+    
     setIsDragging(true);
     const key = getSlotKey(dateIndex, timeIndex);
     const isSelected = selectedSlots.has(key);
     setSelectionMode(isSelected ? "remove" : "add");
-    // Toggle is handled in mouseDown to support both click and drag
     toggleSlot(dateIndex, timeIndex, !isSelected);
   };
 
   const handleMouseEnter = (dateIndex: number, timeIndex: number) => {
-    if (isDragging) {
+    if (isDragging && !justTouched.current) {
       toggleSlot(dateIndex, timeIndex, selectionMode === "add");
     }
   };
 
-  // Touch handlers for mobile support - simplified to tap-only on mobile
+  // Touch handlers for mobile - tap to toggle
   const handleTouchStart = (dateIndex: number, timeIndex: number, e: React.TouchEvent) => {
-    if (isMobile) {
-      // On mobile, just toggle on tap - no drag
-      e.preventDefault();
-      toggleSlot(dateIndex, timeIndex);
-      return;
-    }
+    // Mark that we're handling a touch event
+    justTouched.current = true;
     
-    // Desktop touch behavior (drag support)
+    // Prevent default to stop scrolling and mouse event simulation
     e.preventDefault();
-    setIsDragging(true);
-    const key = getSlotKey(dateIndex, timeIndex);
-    const isSelected = selectedSlots.has(key);
-    setSelectionMode(isSelected ? "remove" : "add");
-    toggleSlot(dateIndex, timeIndex, !isSelected);
+    
+    // Simple toggle on tap
+    toggleSlot(dateIndex, timeIndex);
+    
+    // Reset the touch flag after a short delay
+    setTimeout(() => {
+      justTouched.current = false;
+    }, 300);
   };
 
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!isDragging || !gridRef.current) return;
-    
-    const touch = e.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-    
-    if (element && element.hasAttribute('data-slot')) {
-      const dateIndex = parseInt(element.getAttribute('data-date-index') || '0');
-      const timeIndex = parseInt(element.getAttribute('data-time-index') || '0');
-      toggleSlot(dateIndex, timeIndex, selectionMode === "add");
-    }
-  }, [isDragging, selectionMode, toggleSlot]);
-
-  const handleTouchEnd = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  // Global event listeners
+  // Global event listeners for mouse (desktop drag support)
   useEffect(() => {
     const handleMouseUp = () => setIsDragging(false);
     
     window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd);
     
     return () => {
       window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [handleTouchMove, handleTouchEnd]);
+  }, []);
 
   return (
     <div className="select-none overflow-x-auto pb-4" ref={gridRef}>
