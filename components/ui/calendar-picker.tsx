@@ -122,11 +122,11 @@ export function CalendarPicker({
                 "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
                 // Base states
                 !inCurrentMonth && "text-muted-foreground/40",
-                inCurrentMonth && !selected && !disabled && "text-foreground hover:bg-accent/50 hover:text-accent-foreground",
+                inCurrentMonth && !selected && !disabled && "text-foreground hover:bg-accent hover:text-accent-foreground",
                 // Disabled
                 disabled && "opacity-30 cursor-not-allowed",
                 // Today indicator
-                today && !selected && "border-primary bg-primary/10",
+                today && !selected && "border-primary bg-secondary",
                 !today && !selected && "border-transparent",
                 // Selected state
                 selected && "bg-primary text-primary-foreground border-primary shadow-[2px_2px_0px_0px_var(--shadow-color)]",

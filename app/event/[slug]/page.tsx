@@ -8,7 +8,7 @@ import { Calendar, Clock, Copy, Check, Globe, Users, AlertCircle } from "lucide-
 import { cn } from "@/lib/utils";
 import { TimeGrid } from "@/components/event/TimeGrid";
 import { HeatMap } from "@/components/event/HeatMap";
-import { CalendarExport } from "@/components/event/CalendarExport";
+import { ScheduleMeeting } from "@/components/event/ScheduleMeeting";
 import { format, parse } from "date-fns";
 import { getEvent, saveAvailability, calculateGroupAvailability, findBestTimeSlots, getParticipantCount } from "@/lib/storage";
 import type { EventConfig, Availability, GroupAvailability, BestTimeSlot } from "@/lib/types";
@@ -325,10 +325,11 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
                 </span>
               )}
               {bestTimes.length > 0 && event && (
-                <CalendarExport 
+                <ScheduleMeeting 
                   eventName={event.name}
-                  bestTime={bestTimes[0]}
+                  bestTimes={bestTimes}
                   timezone={event.timezone}
+                  totalParticipants={participantCount}
                 />
               )}
             </div>
