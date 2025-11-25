@@ -106,9 +106,9 @@ export default function Home() {
                 The modern alternative to When2Meet
               </div>
               
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-foreground leading-[0.9]">
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-foreground leading-[0.9] whitespace-nowrap">
                 LESS CHAOS, <br />
-                <span className="text-transparent bg-clip-text bg-linear-to-r from-foreground to-zinc-400" style={{ WebkitTextStroke: "2px var(--text-stroke-color)", color: "transparent" }}></span>
+                <span className="text-transparent bg-clip-text bg-linear-to-r from-foreground to-zinc-400" style={{ WebkitTextStroke: "2px var(--text-stroke-color)", color: "transparent" }}>MORE MEETINGS.</span>
               </h1>
               
               <p className="text-xl font-medium text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed border-l-4 border-border pl-4">
@@ -152,7 +152,7 @@ export default function Home() {
               initial={{ opacity: 0, x: 50, rotate: -10 }}
               animate={{ opacity: 1, x: 0, rotate: -6 }}
               transition={{ delay: 0.2, duration: 0.8, type: "spring" }}
-              className="absolute top-10 left-10 bg-background p-4 border-2 border-border shadow-[8px_8px_0px_0px_var(--shadow-color)] w-64 z-10 hover:z-30 hover:scale-105 transition-all duration-300 cursor-default"
+              className="absolute top-10 left-20 bg-background p-4 border-2 border-border shadow-[8px_8px_0px_0px_var(--shadow-color)] w-64 z-10 hover:z-30 hover:scale-105 transition-all duration-300 cursor-default"
             >
               <div className="flex items-center gap-3 mb-4 border-b-2 border-border pb-2">
                 <div className="w-10 h-10 border-2 border-border bg-yellow-300 flex items-center justify-center">
@@ -185,7 +185,7 @@ export default function Home() {
               initial={{ opacity: 0, x: 50, rotate: 10 }}
               animate={{ opacity: 1, x: 0, rotate: 3 }}
               transition={{ delay: 0.4, duration: 0.8, type: "spring" }}
-              className="absolute top-32 right-10 bg-background p-4 border-2 border-border shadow-[8px_8px_0px_0px_var(--shadow-color)] w-72 z-20 hover:z-30 hover:scale-105 transition-all duration-300 cursor-default"
+              className="absolute top-32 right-0 bg-background p-4 border-2 border-border shadow-[8px_8px_0px_0px_var(--shadow-color)] w-72 z-20 hover:z-30 hover:scale-105 transition-all duration-300 cursor-default"
             >
               <div className="flex items-center gap-3 mb-4 border-b-2 border-border pb-2">
                 <div className="w-10 h-10 border-2 border-border bg-blue-300 flex items-center justify-center">
