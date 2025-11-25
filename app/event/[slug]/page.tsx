@@ -310,40 +310,42 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
           activeTab === "availability" ? "hidden lg:flex" : "flex"
         )}>
           {/* Best Time Card */}
-          <div className="bg-accent/20 border-2 border-accent p-4 flex items-center justify-between shadow-[4px_4px_0px_0px_var(--shadow-color)]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-accent flex items-center justify-center border-2 border-border">
-                <Check className="w-5 h-5 text-accent-foreground" />
+          <div className="bg-accent/20 border-2 border-accent p-4 shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-accent flex items-center justify-center border-2 border-border shrink-0">
+                  <Check className="w-5 h-5 text-accent-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-foreground">Best Time to Meet</h3>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {bestTimes.length > 0 
+                      ? `${format(parse(bestTimes[0].date, "yyyy-MM-dd", new Date()), "EEE, MMM d")} • ${formatTime(bestTimes[0].startTime)} - ${formatTime(bestTimes[0].endTime)}`
+                      : participantCount === 0 
+                        ? "No responses yet"
+                        : "Finding best time..."
+                    }
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-foreground">Best Time to Meet</h3>
-                <p className="text-sm text-muted-foreground">
-                  {bestTimes.length > 0 
-                    ? `${format(parse(bestTimes[0].date, "yyyy-MM-dd", new Date()), "EEEE, MMM d")} • ${formatTime(bestTimes[0].startTime)} - ${formatTime(bestTimes[0].endTime)}`
-                    : participantCount === 0 
-                      ? "No responses yet"
-                      : "Finding best time..."
-                  }
-                </p>
+              <div className="flex items-center gap-2 ml-auto sm:ml-0">
+                {bestTimes.length > 0 && (
+                  <span className="text-sm font-mono bg-accent px-2 py-1 border-2 border-border text-accent-foreground">
+                    {bestTimes[0].count}/{participantCount}
+                  </span>
+                )}
+                {participantCount > 0 && event && parsedDates.length > 0 && (
+                  <ScheduleMeeting 
+                    eventName={event.name}
+                    dates={parsedDates}
+                    startHour={startHour}
+                    endHour={endHour}
+                    groupAvailability={groupAvailability}
+                    timezone={event.timezone}
+                    totalParticipants={participantCount}
+                  />
+                )}
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {bestTimes.length > 0 && (
-                <span className="text-sm font-mono bg-accent px-2 py-1 border-2 border-border text-accent-foreground">
-                  {bestTimes[0].count}/{participantCount}
-                </span>
-              )}
-              {participantCount > 0 && event && parsedDates.length > 0 && (
-                <ScheduleMeeting 
-                  eventName={event.name}
-                  dates={parsedDates}
-                  startHour={startHour}
-                  endHour={endHour}
-                  groupAvailability={groupAvailability}
-                  timezone={event.timezone}
-                  totalParticipants={participantCount}
-                />
-              )}
             </div>
           </div>
 
