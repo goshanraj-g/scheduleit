@@ -205,8 +205,9 @@ export async function findBestTimeSlots(
       // Key format: "YYYY-MM-DDTHH:mm"
       const [date, time] = key.split('T');
       const [hour, minute] = time.split(':').map(Number);
-      const endMinute = minute === 30 ? 0 : 30;
-      const endHour = minute === 30 ? hour + 1 : hour;
+      // Each slot is 30 minutes: 00 -> 30, 30 -> 00 (next hour)
+      const endMinute = minute === 0 ? 30 : 0;
+      const endHour = minute === 0 ? hour : hour + 1;
 
       return {
         date,

@@ -103,16 +103,16 @@ export default function Home() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-black opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-black"></span>
                 </span>
-                The modern alternative to When2meet
+                The modern alternative to When2Meet
               </div>
               
               <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-foreground leading-[0.9]">
-                SYNC UP. <br />
-                <span className="text-transparent bg-clip-text bg-linear-to-r from-foreground to-zinc-400" style={{ WebkitTextStroke: "2px var(--text-stroke-color)", color: "transparent" }}>STRESS DOWN.</span>
+                LESS CHAOS, <br />
+                <span className="text-transparent bg-clip-text bg-linear-to-r from-foreground to-zinc-400" style={{ WebkitTextStroke: "2px var(--text-stroke-color)", color: "transparent" }}></span>
               </h1>
               
               <p className="text-xl font-medium text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed border-l-4 border-border pl-4">
-                Whether it's a quick <span className="text-black font-bold bg-yellow-300 px-1 shadow-[2px_2px_0px_0px_var(--shadow-color)]">coffee chat</span> or a <span className="text-black font-bold bg-blue-300 px-1 shadow-[2px_2px_0px_0px_var(--shadow-color)]">20-person team meeting</span>, find the time that works for everyone.
+                Whether it's a quick <span className="text-black font-bold bg-yellow-300 px-1 shadow-[2px_2px_0px_0px_var(--shadow-color)]">coffee chat</span> or a <span className="text-black font-bold bg-blue-300 px-1 shadow-[2px_2px_0px_0px_var(--shadow-color)]">20-person team meeting</span>, find the time that works for everyone!
               </p>
 
               <form 
@@ -120,7 +120,7 @@ export default function Home() {
                 className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto lg:mx-0 mt-8"
               >
                 <Input 
-                  placeholder="Event name (e.g. Q4 Planning)" 
+                  placeholder="Event name (e.g. Chat w/ Bob)" 
                   className="h-14 text-lg font-medium"
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}

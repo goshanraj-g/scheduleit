@@ -18,6 +18,7 @@ interface TooltipData {
   count: number;
   participants: string[];
   time: string;
+  endTime: string;
   date: string;
   x: number;
   y: number;
@@ -88,10 +89,14 @@ export function HeatMap({
     participants: string[]
   ) => {
     const rect = e.currentTarget.getBoundingClientRect();
+    // Calculate end time (each slot is 30 minutes)
+    const endMinute = time.minute === 0 ? 30 : 0;
+    const endHour = time.minute === 0 ? time.hour : time.hour + 1;
     setTooltip({
       count,
       participants,
       time: formatTimeDisplay(time),
+      endTime: formatTimeDisplay({ hour: endHour, minute: endMinute }),
       date: format(date, "EEE, MMM d"),
       x: rect.left + rect.width / 2,
       y: rect.top,
@@ -118,7 +123,7 @@ export function HeatMap({
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-xs text-muted-foreground">{tooltip.date}</span>
               <span className="text-xs font-mono bg-secondary px-1.5 py-0.5 border border-border">
-                {tooltip.time}
+                {tooltip.time} - {tooltip.endTime}
               </span>
             </div>
             

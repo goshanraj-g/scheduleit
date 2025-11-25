@@ -118,7 +118,7 @@ export function CalendarPicker({
               onClick={() => toggleDate(day)}
               disabled={disabled}
               className={cn(
-                "h-10 flex items-center justify-center text-sm font-medium transition-all border-2",
+                "h-10 flex items-center justify-center text-sm font-medium transition-all border-2 cursor-pointer",
                 "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
                 // Base states
                 !inCurrentMonth && "text-muted-foreground/40",
@@ -169,7 +169,7 @@ export function CalendarPicker({
                     e.stopPropagation();
                     toggleDate(date);
                   }}
-                  className="hover:text-destructive"
+                  className="hover:text-destructive cursor-pointer"
                 >
                   <X className="h-3 w-3" />
                 </button>

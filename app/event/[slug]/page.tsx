@@ -30,6 +30,7 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   
   const [groupAvailability, setGroupAvailability] = useState<GroupAvailability | null>(null);
   const [bestTimes, setBestTimes] = useState<BestTimeSlot[]>([]);
@@ -87,6 +88,7 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
   const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (event?.nameOption === "optional" || userName.trim()) {
+      setSaveError(null); // Clear any previous error
       setHasSubmittedName(true);
     }
   };
@@ -94,6 +96,7 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
   const handleSlotsChange = (slots: Set<string>) => {
     setSelectedSlots(slots);
     setHasUnsavedChanges(true);
+    setSaveError(null); // Clear error when user makes changes
   };
 
   // Generate a unique session ID for anonymous users
@@ -115,6 +118,7 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     if (!event) return;
     
     setSaving(true);
+    setSaveError(null);
     const participantName = getParticipantName();
     const sessionToken = getSessionToken(event.id);
     
@@ -128,7 +132,7 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     
     const result = await saveAvailability(availability, sessionToken);
     if (result.error) {
-      alert(result.error);
+      setSaveError(result.error);
       setSaving(false);
       return;
     }
@@ -141,10 +145,12 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
 
   // Format time for display
   const formatTime = (time: string) => {
-    const hour = parseInt(time.split(":")[0]);
+    const [hourStr, minuteStr] = time.split(":");
+    const hour = parseInt(hourStr);
+    const minute = minuteStr || "00";
     const ampm = hour >= 12 ? "PM" : "AM";
     const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${hour12}:00 ${ampm}`;
+    return `${hour12}:${minute} ${ampm}`;
   };
 
   // Loading state
@@ -209,7 +215,7 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
               onClick={handleCopyLink}
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              <span className="hidden sm:inline">{copied ? "Copied!" : "Copy Link"}</span>
+              <span className="hidden sm:inline">{copied ? "Copied!" : "Copy to Share"}</span>
             </Button>
           </div>
         </div>
@@ -294,6 +300,18 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
               />
             </div>
             
+            {/* Error Message */}
+            {saveError && (
+              <div className="mb-4 p-3 bg-destructive/10 border-2 border-destructive text-destructive text-sm flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-bold">Unable to save</p>
+                  <p>{saveError}</p>
+                  <p className="text-xs mt-1 opacity-75">Reload the page to use a different name.</p>
+                </div>
+              </div>
+            )}
+            
             <Button 
               onClick={handleSaveAvailability}
               disabled={!hasUnsavedChanges || saving || selectedSlots.size === 0}
@@ -320,7 +338,9 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
                   <h3 className="font-bold text-foreground">Best Time to Meet</h3>
                   <p className="text-sm text-muted-foreground truncate">
                     {bestTimes.length > 0 
-                      ? `${format(parse(bestTimes[0].date, "yyyy-MM-dd", new Date()), "EEE, MMM d")} • ${formatTime(bestTimes[0].startTime)} - ${formatTime(bestTimes[0].endTime)}`
+                      ? bestTimes[0].count === participantCount
+                        ? `Everyone's free ${format(parse(bestTimes[0].date, "yyyy-MM-dd", new Date()), "EEE, MMM d")} • ${formatTime(bestTimes[0].startTime)} - ${formatTime(bestTimes[0].endTime)}`
+                        : `${bestTimes[0].count} available ${format(parse(bestTimes[0].date, "yyyy-MM-dd", new Date()), "EEE, MMM d")} • ${formatTime(bestTimes[0].startTime)} - ${formatTime(bestTimes[0].endTime)}`
                       : participantCount === 0 
                         ? "No responses yet"
                         : "Finding best time..."
