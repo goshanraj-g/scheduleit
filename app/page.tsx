@@ -85,11 +85,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/20 relative">
-      <main className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:p-6 relative overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(var(--border)_1px,transparent_1px)] bg-size-[16px_16px] opacity-20"></div>
 
-        <div className="container max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+        <div className="container max-w-6xl mx-auto grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left: Copy & Input */}
           <div className="flex flex-col gap-8 text-center lg:text-left z-10">
             <motion.div 
@@ -106,12 +106,12 @@ export default function Home() {
                 The modern alternative to When2Meet
               </div>
               
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-foreground leading-[0.9] whitespace-nowrap">
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter text-foreground leading-[0.9]">
                 LESS CHAOS, <br />
                 <span className="text-transparent bg-clip-text bg-linear-to-r from-foreground to-zinc-400" style={{ WebkitTextStroke: "2px var(--text-stroke-color)", color: "transparent" }}>MORE MEETINGS.</span>
               </h1>
               
-              <p className="text-xl font-medium text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed border-l-4 border-border pl-4">
+              <p className="text-base sm:text-xl font-medium text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed border-l-4 border-border pl-4">
                 Whether it's a quick <span className="text-black font-bold bg-yellow-300 px-1 shadow-[2px_2px_0px_0px_var(--shadow-color)]">coffee chat</span> or a <span className="text-black font-bold bg-blue-300 px-1 shadow-[2px_2px_0px_0px_var(--shadow-color)]">20-person team meeting</span>, find the time that works for everyone!
               </p>
 

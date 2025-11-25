@@ -189,7 +189,7 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:h-16 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
           <div className="flex items-center gap-4">
             <div className="w-8 h-8 bg-accent flex items-center justify-center border-2 border-border">
               <Calendar className="w-4 h-4 text-accent-foreground" />
@@ -271,13 +271,13 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
         </div>
       )}
 
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 pb-20 lg:pb-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: User Input */}
         <div className={cn(
           "lg:col-span-4 flex flex-col gap-6",
           activeTab === "group" ? "hidden lg:flex" : "flex"
         )}>
-          <div className="bg-card border-2 border-border p-6 shadow-[4px_4px_0px_0px_var(--shadow-color)] flex flex-col h-full">
+          <div className="bg-card border-2 border-border p-4 sm:p-6 shadow-[4px_4px_0px_0px_var(--shadow-color)] flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold uppercase">Your Availability</h2>
               {userName && (
