@@ -114,7 +114,7 @@ export function HeatMap({
             transform: "translate(-50%, -100%)",
           }}
         >
-          <div className="bg-zinc-900 border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] p-3 min-w-[160px] max-w-[240px]">
+          <div className="bg-zinc-900 border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] p-3 min-w-40 max-w-60">
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-xs text-muted-foreground">{tooltip.date}</span>
               <span className="text-xs font-mono bg-secondary px-1.5 py-0.5 border border-border">

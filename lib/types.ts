@@ -23,6 +23,7 @@ export interface Availability {
   participantName: string;
   slots: string[]; // Array of "dateIndex-timeIndex" keys
   submittedAt: string;
+  sessionToken?: string; // Token for ownership verification
 }
 
 export interface GroupAvailability {

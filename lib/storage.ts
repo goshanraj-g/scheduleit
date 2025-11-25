@@ -30,6 +30,7 @@ function dbAvailabilityToApp(db: DbAvailability): Availability {
     participantName: db.participant_name,
     slots: db.slots,
     submittedAt: db.submitted_at,
+    sessionToken: db.session_token || undefined,
   };
 }
 
@@ -91,7 +92,26 @@ export async function getEventById(id: string): Promise<EventConfig | null> {
 
 // ===== AVAILABILITY =====
 
-export async function saveAvailability(availability: Availability): Promise<Availability | null> {
+export async function saveAvailability(
+  availability: Availability,
+  sessionToken?: string
+): Promise<{ data: Availability | null; error?: string }> {
+  // First, check if this availability already exists
+  const { data: existing } = await supabase
+    .from('availability')
+    .select('session_token')
+    .eq('event_id', availability.eventId)
+    .eq('participant_name', availability.participantName)
+    .single();
+
+  // If exists and has a session token, verify ownership
+  if (existing?.session_token && existing.session_token !== sessionToken) {
+    return { 
+      data: null, 
+      error: 'This name is already taken. Please use a different name.' 
+    };
+  }
+
   // Upsert: update if exists, insert if not
   const { data, error } = await supabase
     .from('availability')
@@ -100,6 +120,7 @@ export async function saveAvailability(availability: Availability): Promise<Avai
         event_id: availability.eventId,
         participant_name: availability.participantName,
         slots: availability.slots,
+        session_token: sessionToken || null,
         submitted_at: availability.submittedAt,
       },
       {
@@ -111,10 +132,10 @@ export async function saveAvailability(availability: Availability): Promise<Avai
 
   if (error) {
     console.error('Error saving availability:', error);
-    return null;
+    return { data: null, error: 'Failed to save availability' };
   }
 
-  return dbAvailabilityToApp(data);
+  return { data: dbAvailabilityToApp(data) };
 }
 
 export async function getEventAvailability(eventId: string): Promise<Availability[]> {

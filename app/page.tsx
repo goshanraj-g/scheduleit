@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CreateEventModal } from "@/components/create-event-modal";
 import { saveEvent, generateId } from "@/lib/storage";
+import { checkRateLimit, getClientFingerprint } from "@/lib/rate-limit";
 import type { EventConfig } from "@/lib/types";
 
 export default function Home() {
@@ -30,10 +31,24 @@ export default function Home() {
     timezone: string;
     nameOption: "required" | "optional" | "anonymous";
   }) => {
+    // Validate event name length
+    if (config.name.length > 100) {
+      alert("Event name must be 100 characters or less.");
+      return;
+    }
+
+    // Check rate limit (max 10 events per hour per client)
+    const fingerprint = getClientFingerprint();
+    const rateLimit = checkRateLimit(`create_event_${fingerprint}`, 10, 3600000);
+    if (!rateLimit.success) {
+      alert(`Too many events created. Please try again in ${Math.ceil(rateLimit.resetIn / 60)} minutes.`);
+      return;
+    }
+    
     setIsCreating(true);
     
     // Generate unique slug
-    const baseSlug = config.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const baseSlug = config.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 50);
     const uniqueSlug = `${baseSlug}-${generateId().slice(0, 6)}`;
     
     // Create event config

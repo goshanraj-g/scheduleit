@@ -23,5 +23,6 @@ export interface DbAvailability {
   event_id: string;
   participant_name: string;
   slots: string[];
+  session_token: string | null;
   submitted_at: string;
 }

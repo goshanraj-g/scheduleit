@@ -20,11 +20,15 @@ CREATE TABLE IF NOT EXISTS availability (
   event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   participant_name TEXT NOT NULL,
   slots TEXT[] NOT NULL,
+  session_token TEXT, -- Token for ownership verification (allows updates)
   submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
   -- One response per participant per event (can update)
   UNIQUE(event_id, participant_name)
 );
+
+-- Migration: Add session_token column if it doesn't exist
+-- ALTER TABLE availability ADD COLUMN IF NOT EXISTS session_token TEXT;
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_events_slug ON events(slug);

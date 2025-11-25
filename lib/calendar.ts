@@ -1,6 +1,6 @@
 // Calendar integration utilities
 
-import { format, parse, addMinutes } from 'date-fns';
+import { format, parse } from 'date-fns';
 
 interface CalendarEvent {
   title: string;

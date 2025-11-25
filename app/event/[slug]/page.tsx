@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar, Clock, Copy, Check, Globe, Users, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, sanitizeName } from "@/lib/utils";
 import { TimeGrid } from "@/components/event/TimeGrid";
 import { HeatMap } from "@/components/event/HeatMap";
 import { ScheduleMeeting } from "@/components/event/ScheduleMeeting";
 import { format, parse } from "date-fns";
 import { getEvent, saveAvailability, calculateGroupAvailability, findBestTimeSlots, getParticipantCount } from "@/lib/storage";
+import { getSessionToken } from "@/lib/rate-limit";
 import type { EventConfig, Availability, GroupAvailability, BestTimeSlot } from "@/lib/types";
 
 export default function EventPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -97,13 +98,14 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
 
   // Generate a unique session ID for anonymous users
   const getParticipantName = () => {
-    if (userName.trim()) return userName.trim();
+    const sanitized = sanitizeName(userName);
+    if (sanitized) return sanitized;
     
     // For anonymous users, create a unique ID stored in sessionStorage
     // so the same tab always uses the same anonymous ID
     let anonId = sessionStorage.getItem(`scheduleit_anon_${event?.id}`);
     if (!anonId) {
-      anonId = `Anonymous-${Math.random().toString(36).substring(2, 8)}`;
+      anonId = `Anonymous-${crypto.randomUUID().slice(0, 8)}`;
       sessionStorage.setItem(`scheduleit_anon_${event?.id}`, anonId);
     }
     return anonId;
@@ -114,6 +116,8 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     
     setSaving(true);
     const participantName = getParticipantName();
+    const sessionToken = getSessionToken(event.id);
+    
     const availability: Availability = {
       id: `${event.id}-${participantName}-${Date.now()}`,
       eventId: event.id,
@@ -122,8 +126,13 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
       submittedAt: new Date().toISOString(),
     };
     
-    const saved = await saveAvailability(availability);
-    if (saved) {
+    const result = await saveAvailability(availability, sessionToken);
+    if (result.error) {
+      alert(result.error);
+      setSaving(false);
+      return;
+    }
+    if (result.data) {
       setHasUnsavedChanges(false);
       await refreshGroupData();
     }

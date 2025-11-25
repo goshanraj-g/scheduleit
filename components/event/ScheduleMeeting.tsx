@@ -207,29 +207,27 @@ export function ScheduleMeeting({
     const event = getCalendarEvent();
     if (!event || !selectedSlot) return;
     
-    const subject = encodeURIComponent(`Meeting Invitation: ${meetingTitle}`);
     const dateFormatted = format(parse(selectedSlot.date, "yyyy-MM-dd", new Date()), "EEEE, MMMM d, yyyy");
     const timeFormatted = `${formatTime(selectedSlot.startTime)} - ${formatTime(selectedSlot.endTime)}`;
     
-    const body = encodeURIComponent(
-`You're invited to a meeting!
+    const emailList = emails.split(',').map(e => e.trim()).filter(Boolean).join(',');
+    
+    // Build email content
+    const subject = `Meeting Invitation: ${meetingTitle}`;
+    const body = `You're invited to a meeting!
 
 ${meetingTitle}
 
-📅 Date: ${dateFormatted}
-🕐 Time: ${timeFormatted}
-${meetingLocation ? `📍 Location: ${meetingLocation}\n` : ''}
-${meetingNotes ? `\n${meetingNotes}\n` : ''}
----
-Add to your calendar:
-• Google Calendar: ${getGoogleCalendarUrl(event)}
-• Outlook: ${getOutlookCalendarUrl(event)}
+Date: ${dateFormatted}
+Time: ${timeFormatted}${meetingLocation ? `\nLocation: ${meetingLocation}` : ''}${meetingNotes ? `\n\n${meetingNotes}` : ''}
 
-Scheduled via ScheduleIt`
-    );
+--
+Scheduled via ScheduleIt`;
 
-    const emailList = emails.split(',').map(e => e.trim()).filter(Boolean).join(',');
-    window.location.href = `mailto:${emailList}?subject=${subject}&body=${body}`;
+    // Use Gmail compose URL - opens in new tab
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailList)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    window.open(gmailUrl, '_blank');
   };
 
   if (totalParticipants === 0) {
