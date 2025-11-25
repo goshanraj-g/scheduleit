@@ -305,6 +305,7 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
                 endHour={endHour}
                 selectedSlots={selectedSlots}
                 onSlotsChange={handleSlotsChange}
+                isMobile={isMobile}
               />
             </div>
             

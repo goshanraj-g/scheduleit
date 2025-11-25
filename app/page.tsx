@@ -111,9 +111,8 @@ export default function Home() {
               </div>
               
               <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter text-foreground leading-[0.9]">
-                LESS CHAOS,{" "}
-                <span className="hidden md:inline"><br /></span>
-                <span className="text-transparent bg-clip-text bg-linear-to-r from-foreground to-zinc-400" style={{ WebkitTextStroke: "2px var(--text-stroke-color)", color: "transparent" }}>MORE MEETINGS.</span>
+                <span className="block lg:inline">LESS CHAOS,</span>{" "}
+                <span className="block lg:inline text-transparent bg-clip-text bg-linear-to-r from-foreground to-zinc-400" style={{ WebkitTextStroke: "2px var(--text-stroke-color)", color: "transparent" }}>MORE CHATS</span>
               </h1>
               
               <p className="text-base sm:text-xl font-medium text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed border-l-4 border-border pl-4">
@@ -122,16 +121,16 @@ export default function Home() {
 
               <form 
                 onSubmit={handleCreateClick}
-                className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto lg:mx-0 mt-8"
+                className="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto lg:mx-0 mt-8"
               >
                 <Input 
                   placeholder="Event name (e.g. Chat w/ Bob)" 
-                  className="h-14 text-lg font-medium"
+                  className="h-14 sm:h-16 text-lg font-medium flex-1"
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
                   autoFocus
                 />
-                <Button size="lg" className="h-14 px-8 text-lg">
+                <Button size="lg" className="h-14 sm:h-16 px-8 text-lg">
                   Create
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>

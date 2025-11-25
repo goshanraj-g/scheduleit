@@ -139,7 +139,7 @@ export function getOutlookCalendarUrl(event: CalendarEvent): string {
     params.set('body', description);
   }
   
-  return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
+  return `https://outlook.live.com/calendar/deeplink/compose?${params.toString()}`;
 }
 
 // Generate Outlook Desktop URL (for installed Outlook)
@@ -219,7 +219,7 @@ export function getOutlookMobileUrl(event: CalendarEvent): string {
   }
   
   // On mobile, this URL opens the Outlook app if installed
-  return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
+  return `https://outlook.live.com/calendar/deeplink/compose?${params.toString()}`;
 }
 
 // Get the best calendar option for the current device

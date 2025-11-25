@@ -10,6 +10,7 @@ interface TimeGridProps {
   endHour?: number;
   selectedSlots?: Set<string>;
   onSlotsChange?: (slots: Set<string>) => void;
+  isMobile?: boolean;
 }
 
 export function TimeGrid({
@@ -18,6 +19,7 @@ export function TimeGrid({
   endHour = 17,
   selectedSlots: externalSlots,
   onSlotsChange,
+  isMobile = false,
 }: TimeGridProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectionMode, setSelectionMode] = useState<"add" | "remove">("add");
@@ -68,12 +70,13 @@ export function TimeGrid({
     setSelectedSlots(newSet);
   }, [getSlotKey, selectedSlots, setSelectedSlots]);
 
-  // Mouse handlers
+  // Mouse handlers - support both click and drag
   const handleMouseDown = (dateIndex: number, timeIndex: number) => {
     setIsDragging(true);
     const key = getSlotKey(dateIndex, timeIndex);
     const isSelected = selectedSlots.has(key);
     setSelectionMode(isSelected ? "remove" : "add");
+    // Toggle is handled in mouseDown to support both click and drag
     toggleSlot(dateIndex, timeIndex, !isSelected);
   };
 
@@ -83,9 +86,17 @@ export function TimeGrid({
     }
   };
 
-  // Touch handlers for mobile support
+  // Touch handlers for mobile support - simplified to tap-only on mobile
   const handleTouchStart = (dateIndex: number, timeIndex: number, e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent scrolling while selecting
+    if (isMobile) {
+      // On mobile, just toggle on tap - no drag
+      e.preventDefault();
+      toggleSlot(dateIndex, timeIndex);
+      return;
+    }
+    
+    // Desktop touch behavior (drag support)
+    e.preventDefault();
     setIsDragging(true);
     const key = getSlotKey(dateIndex, timeIndex);
     const isSelected = selectedSlots.has(key);
@@ -130,14 +141,17 @@ export function TimeGrid({
       <div 
         className="grid" 
         style={{ 
-          gridTemplateColumns: `60px repeat(${dates.length}, minmax(60px, 1fr))`,
-          minWidth: dates.length > 5 ? `${60 + dates.length * 70}px` : undefined
+          gridTemplateColumns: `60px repeat(${dates.length}, minmax(${isMobile ? '50px' : '60px'}, 1fr))`,
+          minWidth: dates.length > 5 ? `${60 + dates.length * (isMobile ? 55 : 70)}px` : undefined
         }}
       >
         {/* Header Row */}
-        <div className="h-12 sticky left-0 bg-background z-10"></div> {/* Empty corner */}
+        <div className={cn("sticky left-0 bg-background z-10", isMobile ? "h-10" : "h-12")}></div> {/* Empty corner */}
         {dates.map((date, i) => (
-          <div key={i} className="h-12 flex flex-col items-center justify-center border-b border-border/50 text-sm px-1">
+          <div key={i} className={cn(
+            "flex flex-col items-center justify-center border-b border-border/50 px-1",
+            isMobile ? "h-10 text-xs" : "h-12 text-sm"
+          )}>
             <span className="font-bold text-foreground">{format(date, "EEE")}</span>
             <span className="text-xs text-muted-foreground">{format(date, "MMM d")}</span>
           </div>
@@ -147,7 +161,10 @@ export function TimeGrid({
         {timeSlots.map((time, timeIndex) => (
           <div key={timeIndex} className="contents">
             {/* Time Label - Sticky */}
-            <div className="h-6 text-xs text-muted-foreground text-right pr-2 -mt-2.5 sticky left-0 bg-background z-10">
+            <div className={cn(
+              "text-xs text-muted-foreground text-right pr-2 sticky left-0 bg-background z-10",
+              isMobile ? "h-8 -mt-3" : "h-6 -mt-2.5"
+            )}>
               {time.minute === 0 ? format(new Date().setHours(time.hour, 0), "h a") : ""}
             </div>
             
@@ -166,9 +183,12 @@ export function TimeGrid({
                   onMouseEnter={() => handleMouseEnter(dateIndex, timeIndex)}
                   onTouchStart={(e) => handleTouchStart(dateIndex, timeIndex, e)}
                   className={cn(
-                    "h-6 border-r border-b border-border/30 transition-colors cursor-pointer",
+                    "border-r border-b border-border/30 transition-colors cursor-pointer",
+                    isMobile ? "h-8" : "h-6",
                     dateIndex === 0 && "border-l",
-                    isSelected ? "bg-primary" : "bg-card hover:bg-primary/10 active:bg-primary/20"
+                    isSelected 
+                      ? "bg-primary" 
+                      : "bg-card hover:bg-primary/10 active:bg-primary/20"
                   )}
                 />
               );
