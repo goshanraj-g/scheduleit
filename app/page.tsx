@@ -111,7 +111,8 @@ export default function Home() {
               </div>
               
               <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter text-foreground leading-[0.9]">
-                LESS CHAOS, <br />
+                LESS CHAOS,{" "}
+                <span className="hidden md:inline"><br /></span>
                 <span className="text-transparent bg-clip-text bg-linear-to-r from-foreground to-zinc-400" style={{ WebkitTextStroke: "2px var(--text-stroke-color)", color: "transparent" }}>MORE MEETINGS.</span>
               </h1>
               

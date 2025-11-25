@@ -162,7 +162,6 @@ export function TimeGrid({
                   data-slot
                   data-date-index={dateIndex}
                   data-time-index={timeIndex}
-                  onClick={() => toggleSlot(dateIndex, timeIndex)}
                   onMouseDown={() => handleMouseDown(dateIndex, timeIndex)}
                   onMouseEnter={() => handleMouseEnter(dateIndex, timeIndex)}
                   onTouchStart={(e) => handleTouchStart(dateIndex, timeIndex, e)}
