@@ -1,42 +1,70 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Download, Send, Users, Clock, X, Check, Copy, Mail } from "lucide-react";
+import { Select } from "@/components/ui/select";
+import { Calendar, Download, Send, Users, X, Check, Copy, Mail, ChevronLeft } from "lucide-react";
 import { generateICS, getGoogleCalendarUrl, getOutlookCalendarUrl } from "@/lib/calendar";
-import { format, parse } from "date-fns";
+import { format, parse, addMinutes } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { BestTimeSlot } from "@/lib/types";
+import type { GroupAvailability } from "@/lib/types";
+
+const DURATION_OPTIONS = [
+  { value: 15, label: "15 minutes" },
+  { value: 30, label: "30 minutes" },
+  { value: 45, label: "45 minutes" },
+  { value: 60, label: "1 hour" },
+  { value: 90, label: "1.5 hours" },
+  { value: 120, label: "2 hours" },
+  { value: 180, label: "3 hours" },
+];
 
 interface ScheduleMeetingProps {
   eventName: string;
-  bestTimes: BestTimeSlot[];
+  dates: Date[];
+  startHour: number;
+  endHour: number;
+  groupAvailability: GroupAvailability | null;
   timezone: string;
   totalParticipants: number;
-  participantEmails?: string[];
+}
+
+interface SelectedTimeSlot {
+  date: string;
+  startTime: string;
+  endTime: string;
+  count: number;
+  participants: string[];
 }
 
 type Step = "select-time" | "compose" | "confirm";
 
 export function ScheduleMeeting({ 
   eventName, 
-  bestTimes, 
+  dates,
+  startHour,
+  endHour,
+  groupAvailability,
   timezone, 
   totalParticipants,
-  participantEmails = []
 }: ScheduleMeetingProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<Step>("select-time");
-  const [selectedSlot, setSelectedSlot] = useState<BestTimeSlot | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<SelectedTimeSlot | null>(null);
   const [meetingTitle, setMeetingTitle] = useState(eventName);
   const [meetingLocation, setMeetingLocation] = useState("");
   const [meetingNotes, setMeetingNotes] = useState("");
-  const [emails, setEmails] = useState(participantEmails.join(", "));
+  const [emails, setEmails] = useState("");
   const [copied, setCopied] = useState(false);
+  const [duration, setDuration] = useState(30);
+  const [hoveredSlot, setHoveredSlot] = useState<{ date: Date; time: { hour: number; minute: number }; count: number; participants: string[] } | null>(null);
 
-  if (bestTimes.length === 0) {
-    return null;
+  // Generate time slots
+  const timeSlots: { hour: number; minute: number }[] = [];
+  for (let h = startHour; h < endHour; h++) {
+    timeSlots.push({ hour: h, minute: 0 });
+    timeSlots.push({ hour: h, minute: 30 });
   }
 
   const formatTime = (time: string) => {
@@ -44,6 +72,75 @@ export function ScheduleMeeting({
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
     return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  const formatTimeFromSlot = (time: { hour: number; minute: number }) => {
+    const ampm = time.hour >= 12 ? 'PM' : 'AM';
+    const hour12 = time.hour === 0 ? 12 : time.hour > 12 ? time.hour - 12 : time.hour;
+    return `${hour12}:${time.minute.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  const getSlotKey = (date: Date, time: { hour: number; minute: number }) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const timeStr = `${time.hour.toString().padStart(2, "0")}:${time.minute.toString().padStart(2, "0")}`;
+    return `${dateStr}T${timeStr}`;
+  };
+
+  const getSlotData = useCallback((date: Date, time: { hour: number; minute: number }) => {
+    if (!groupAvailability || totalParticipants === 0) {
+      return { count: 0, participants: [], opacity: 0 };
+    }
+    
+    const key = getSlotKey(date, time);
+    const slotData = groupAvailability.slots[key];
+    
+    if (!slotData) {
+      return { count: 0, participants: [], opacity: 0 };
+    }
+    
+    const count = slotData.count;
+    const opacity = count / totalParticipants;
+    
+    return { 
+      count, 
+      participants: slotData.participants, 
+      opacity: Math.max(0.15, opacity)
+    };
+  }, [groupAvailability, totalParticipants]);
+
+  const calculateEndTime = (dateStr: string, startTime: string, durationMinutes: number) => {
+    const startDate = parse(`${dateStr} ${startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+    const endDate = addMinutes(startDate, durationMinutes);
+    return format(endDate, "HH:mm");
+  };
+
+  const handleSlotClick = (date: Date, time: { hour: number; minute: number }) => {
+    const data = getSlotData(date, time);
+    const dateStr = format(date, "yyyy-MM-dd");
+    const startTime = `${time.hour.toString().padStart(2, "0")}:${time.minute.toString().padStart(2, "0")}`;
+    
+    // Calculate end time based on selected duration
+    const endTime = calculateEndTime(dateStr, startTime, duration);
+
+    setSelectedSlot({
+      date: dateStr,
+      startTime,
+      endTime,
+      count: data.count,
+      participants: data.participants,
+    });
+    setStep("compose");
+  };
+
+  const handleDurationChange = (newDuration: number) => {
+    setDuration(newDuration);
+    if (selectedSlot) {
+      const newEndTime = calculateEndTime(selectedSlot.date, selectedSlot.startTime, newDuration);
+      setSelectedSlot({
+        ...selectedSlot,
+        endTime: newEndTime,
+      });
+    }
   };
 
   const getCalendarEvent = () => {
@@ -59,14 +156,10 @@ export function ScheduleMeeting({
     };
   };
 
-  const handleSlotSelect = (slot: BestTimeSlot) => {
-    setSelectedSlot(slot);
-    setStep("compose");
-  };
-
   const handleBack = () => {
     if (step === "compose") {
       setStep("select-time");
+      setSelectedSlot(null);
     } else if (step === "confirm") {
       setStep("compose");
     }
@@ -77,6 +170,7 @@ export function ScheduleMeeting({
     setStep("select-time");
     setSelectedSlot(null);
     setCopied(false);
+    setHoveredSlot(null);
   };
 
   const handleSchedule = () => {
@@ -138,6 +232,10 @@ Scheduled via ScheduleIt`
     window.location.href = `mailto:${emailList}?subject=${subject}&body=${body}`;
   };
 
+  if (totalParticipants === 0) {
+    return null;
+  }
+
   return (
     <>
       <Button
@@ -156,23 +254,34 @@ Scheduled via ScheduleIt`
           onClick={handleClose}
         >
           <div 
-            className="bg-background border-2 border-border shadow-[8px_8px_0px_0px_var(--shadow-color)] w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+            className={cn(
+              "bg-background border-2 border-border shadow-[8px_8px_0px_0px_var(--shadow-color)] max-h-[90vh] overflow-hidden flex flex-col",
+              step === "select-time" ? "w-full max-w-3xl" : "w-full max-w-lg"
+            )}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b-2 border-border bg-card">
               <div className="flex items-center gap-3">
+                {step !== "select-time" && (
+                  <button
+                    onClick={handleBack}
+                    className="p-1.5 hover:bg-secondary transition-colors border-2 border-border"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                )}
                 <div className="w-8 h-8 bg-accent flex items-center justify-center border-2 border-border">
                   <Calendar className="w-4 h-4 text-accent-foreground" />
                 </div>
                 <div>
                   <h2 className="font-bold uppercase text-sm">
-                    {step === "select-time" && "Select a Time"}
+                    {step === "select-time" && "Click to Select a Time"}
                     {step === "compose" && "Meeting Details"}
                     {step === "confirm" && "Meeting Scheduled!"}
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    {step === "select-time" && "Choose the best time for everyone"}
+                    {step === "select-time" && "Click on the availability grid to pick a time slot"}
                     {step === "compose" && "Add details and send invites"}
                     {step === "confirm" && "Share with participants"}
                   </p>
@@ -189,52 +298,120 @@ Scheduled via ScheduleIt`
             {/* Content */}
             <div className="p-4 overflow-y-auto flex-1">
               {step === "select-time" && (
-                <div className="space-y-2">
-                  {bestTimes.slice(0, 10).map((slot, idx) => (
-                    <button
-                      key={`${slot.date}-${slot.startTime}`}
-                      onClick={() => handleSlotSelect(slot)}
-                      className={cn(
-                        "w-full p-3 border-2 text-left transition-all",
-                        "hover:bg-accent hover:text-accent-foreground hover:border-accent",
-                        idx === 0 
-                          ? "border-accent bg-accent/20" 
-                          : "border-border bg-card"
-                      )}
+                <div className="space-y-4">
+                  {/* Legend */}
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Click a time slot to schedule the meeting
+                    </p>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 bg-emerald-500 border border-border"></span> All
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 bg-emerald-500/50 border border-border"></span> Some
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 bg-secondary border border-border"></span> None
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Interactive Grid */}
+                  <div className="overflow-x-auto pb-2">
+                    <div 
+                      className="grid" 
+                      style={{ 
+                        gridTemplateColumns: `60px repeat(${dates.length}, minmax(70px, 1fr))`,
+                        minWidth: dates.length > 5 ? `${60 + dates.length * 75}px` : undefined
+                      }}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold">
-                          {format(parse(slot.date, "yyyy-MM-dd", new Date()), "EEE, MMM d")}
-                        </span>
-                        <span className={cn(
-                          "text-xs font-mono px-2 py-0.5 border-2",
-                          slot.count === totalParticipants 
+                      {/* Header Row */}
+                      <div className="h-12 sticky left-0 bg-background z-10"></div>
+                      {dates.map((date, i) => (
+                        <div key={i} className="h-12 flex flex-col items-center justify-center border-b-2 border-border text-sm px-1">
+                          <span className="font-bold text-foreground">{format(date, "EEE")}</span>
+                          <span className="text-xs text-muted-foreground">{format(date, "MMM d")}</span>
+                        </div>
+                      ))}
+
+                      {/* Time Rows */}
+                      {timeSlots.map((time, timeIndex) => (
+                        <div key={timeIndex} className="contents">
+                          {/* Time Label */}
+                          <div className="h-8 text-xs text-muted-foreground text-right pr-2 flex items-center justify-end sticky left-0 bg-background z-10">
+                            {time.minute === 0 ? formatTimeFromSlot(time) : ""}
+                          </div>
+                          
+                          {/* Grid Cells */}
+                          {dates.map((date, dateIndex) => {
+                            const { count, participants, opacity } = getSlotData(date, time);
+                            const isHovered = hoveredSlot && 
+                              format(hoveredSlot.date, "yyyy-MM-dd") === format(date, "yyyy-MM-dd") &&
+                              hoveredSlot.time.hour === time.hour && 
+                              hoveredSlot.time.minute === time.minute;
+                            
+                            return (
+                              <div
+                                key={`${dateIndex}-${timeIndex}`}
+                                onClick={() => handleSlotClick(date, time)}
+                                onMouseEnter={() => setHoveredSlot({ date, time, count, participants })}
+                                onMouseLeave={() => setHoveredSlot(null)}
+                                className={cn(
+                                  "h-8 border-r border-b border-border/30 transition-all cursor-pointer relative",
+                                  dateIndex === 0 && "border-l",
+                                  count > 0 
+                                    ? "bg-emerald-500 hover:ring-2 hover:ring-accent hover:ring-inset" 
+                                    : "bg-secondary hover:bg-muted",
+                                  isHovered && "ring-2 ring-accent ring-inset"
+                                )}
+                                style={count > 0 ? { opacity } : undefined}
+                              />
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Hover Info */}
+                  <div className={cn(
+                    "p-3 border-2 border-border bg-card transition-opacity",
+                    hoveredSlot ? "opacity-100" : "opacity-50"
+                  )}>
+                    {hoveredSlot ? (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-bold">
+                            {format(hoveredSlot.date, "EEE, MMM d")} at {formatTimeFromSlot(hoveredSlot.time)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {hoveredSlot.count}/{totalParticipants} available
+                            {hoveredSlot.participants.length > 0 && (
+                              <span className="ml-2">
+                                ({hoveredSlot.participants.slice(0, 3).join(', ')}
+                                {hoveredSlot.participants.length > 3 && ` +${hoveredSlot.participants.length - 3}`})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <div className={cn(
+                          "px-3 py-1 border-2 font-mono text-sm",
+                          hoveredSlot.count === totalParticipants 
                             ? "bg-emerald-500 border-emerald-600 text-white"
+                            : hoveredSlot.count > 0
+                            ? "bg-emerald-500/30 border-emerald-600 text-emerald-400"
                             : "bg-secondary border-border"
                         )}>
-                          {slot.count}/{totalParticipants}
-                        </span>
+                          {hoveredSlot.count}/{totalParticipants}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
-                        </span>
-                        <span className="flex items-center gap-1 truncate">
-                          <Users className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate">
-                            {slot.participants.slice(0, 3).join(', ')}
-                            {slot.participants.length > 3 && ` +${slot.participants.length - 3}`}
-                          </span>
-                        </span>
-                      </div>
-                      {idx === 0 && (
-                        <span className="text-xs text-accent font-bold mt-1 inline-block">
-                          ★ BEST OPTION
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                    ) : (
+                      <p className="text-muted-foreground text-center">
+                        Hover over a time slot to see availability details
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -252,8 +429,24 @@ Scheduled via ScheduleIt`
                       </span>
                     </div>
                     <p className="text-xs text-accent-foreground/80 mt-1">
-                      {selectedSlot.count}/{totalParticipants} available: {selectedSlot.participants.join(', ')}
+                      {selectedSlot.count}/{totalParticipants} available
+                      {selectedSlot.participants.length > 0 && `: ${selectedSlot.participants.join(', ')}`}
                     </p>
+                  </div>
+
+                  {/* Duration selector */}
+                  <div>
+                    <label className="text-xs font-bold uppercase mb-1.5 block">Duration</label>
+                    <Select
+                      value={duration.toString()}
+                      onChange={(e) => handleDurationChange(parseInt(e.target.value))}
+                    >
+                      {DURATION_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </Select>
                   </div>
 
                   {/* Meeting title */}
@@ -392,23 +585,12 @@ Scheduled via ScheduleIt`
             </div>
 
             {/* Footer */}
-            {step !== "confirm" && (
-              <div className="p-4 border-t-2 border-border bg-card flex justify-between">
-                {step === "compose" ? (
-                  <>
-                    <Button variant="outline" onClick={handleBack}>
-                      Back
-                    </Button>
-                    <Button onClick={handleSchedule} disabled={!meetingTitle.trim()}>
-                      <Check className="w-4 h-4 mr-2" />
-                      Schedule Meeting
-                    </Button>
-                  </>
-                ) : (
-                  <div className="w-full text-center text-sm text-muted-foreground">
-                    Pick a time slot above
-                  </div>
-                )}
+            {step === "compose" && (
+              <div className="p-4 border-t-2 border-border bg-card flex justify-end">
+                <Button onClick={handleSchedule} disabled={!meetingTitle.trim()}>
+                  <Check className="w-4 h-4 mr-2" />
+                  Schedule Meeting
+                </Button>
               </div>
             )}
 

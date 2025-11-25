@@ -114,7 +114,7 @@ export function HeatMap({
             transform: "translate(-50%, -100%)",
           }}
         >
-          <div className="bg-popover border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] p-3 min-w-40 max-w-60">
+          <div className="bg-zinc-900 border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] p-3 min-w-[160px] max-w-[240px]">
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-xs text-muted-foreground">{tooltip.date}</span>
               <span className="text-xs font-mono bg-secondary px-1.5 py-0.5 border border-border">
@@ -167,23 +167,17 @@ export function HeatMap({
           </div>
           {/* Arrow */}
           <div 
-            className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-popover border-r-2 border-b-2 border-border rotate-45"
+            className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-900 border-r-2 border-b-2 border-border rotate-45"
             style={{ bottom: -6 }}
           />
         </div>
       )}
 
-      <div 
-        className="grid" 
-        style={{ 
-          gridTemplateColumns: `60px repeat(${dates.length}, minmax(60px, 1fr))`,
-          minWidth: dates.length > 5 ? `${60 + dates.length * 70}px` : undefined
-        }}
-      >
+      <div className="min-w-[300px] grid" style={{ gridTemplateColumns: `auto repeat(${dates.length}, 1fr)` }}>
         {/* Header Row */}
-        <div className="h-12 sticky left-0 bg-background z-10"></div>
+        <div className="h-12"></div>
         {dates.map((date, i) => (
-          <div key={i} className="h-12 flex flex-col items-center justify-center border-b border-border/50 text-sm px-1">
+          <div key={i} className="h-12 flex flex-col items-center justify-center border-b border-border/50 text-sm">
             <span className="font-bold text-foreground">{format(date, "EEE")}</span>
             <span className="text-xs text-muted-foreground">{format(date, "MMM d")}</span>
           </div>
@@ -192,8 +186,8 @@ export function HeatMap({
         {/* Time Rows */}
         {timeSlots.map((time, timeIndex) => (
           <div key={timeIndex} className="contents">
-            {/* Time Label - Sticky */}
-            <div className="h-6 text-xs text-muted-foreground text-right pr-2 -mt-2.5 sticky left-0 bg-background z-10">
+            {/* Time Label */}
+            <div className="h-6 text-xs text-muted-foreground text-right pr-2 -mt-2.5">
               {time.minute === 0 ? format(new Date().setHours(time.hour, 0), "h a") : ""}
             </div>
             

@@ -324,10 +324,13 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
                   {bestTimes[0].count}/{participantCount}
                 </span>
               )}
-              {bestTimes.length > 0 && event && (
+              {participantCount > 0 && event && parsedDates.length > 0 && (
                 <ScheduleMeeting 
                   eventName={event.name}
-                  bestTimes={bestTimes}
+                  dates={parsedDates}
+                  startHour={startHour}
+                  endHour={endHour}
+                  groupAvailability={groupAvailability}
                   timezone={event.timezone}
                   totalParticipants={participantCount}
                 />
