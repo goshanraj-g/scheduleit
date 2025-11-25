@@ -1,17 +1,174 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Share2, Copy, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Calendar, Clock, Copy, Check, Globe, Users, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimeGrid } from "@/components/event/TimeGrid";
 import { HeatMap } from "@/components/event/HeatMap";
+import { CalendarExport } from "@/components/event/CalendarExport";
+import { format, parse } from "date-fns";
+import { getEvent, saveAvailability, calculateGroupAvailability, findBestTimeSlots, getParticipantCount } from "@/lib/storage";
+import type { EventConfig, Availability, GroupAvailability, BestTimeSlot } from "@/lib/types";
 
 export default function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const eventName = slug.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+  const router = useRouter();
+  
+  const [event, setEvent] = useState<EventConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   
   const [activeTab, setActiveTab] = useState<"availability" | "group">("availability");
+  const [userName, setUserName] = useState("");
+  const [hasSubmittedName, setHasSubmittedName] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
+  const [groupAvailability, setGroupAvailability] = useState<GroupAvailability | null>(null);
+  const [bestTimes, setBestTimes] = useState<BestTimeSlot[]>([]);
+  const [participantCount, setParticipantCount] = useState(0);
+
+  // Load event from storage
+  useEffect(() => {
+    async function loadEvent() {
+      const loadedEvent = await getEvent(slug);
+      if (loadedEvent) {
+        setEvent(loadedEvent);
+        if (loadedEvent.nameOption === "anonymous") {
+          setHasSubmittedName(true);
+        }
+      } else {
+        setNotFound(true);
+      }
+      setLoading(false);
+    }
+    loadEvent();
+  }, [slug]);
+
+  // Load group availability
+  const refreshGroupData = useCallback(async () => {
+    if (!event) return;
+    
+    const [group, best, count] = await Promise.all([
+      calculateGroupAvailability(event.id),
+      findBestTimeSlots(event.id),
+      getParticipantCount(event.id),
+    ]);
+    
+    setGroupAvailability(group);
+    setBestTimes(best);
+    setParticipantCount(count);
+  }, [event]);
+
+  useEffect(() => {
+    if (event) {
+      refreshGroupData();
+    }
+  }, [event, refreshGroupData]);
+
+  // Parse event data
+  const parsedDates = event?.dates.map(d => parse(d, "yyyy-MM-dd", new Date())) || [];
+  const startHour = event ? parseInt(event.startTime.split(":")[0]) : 9;
+  const endHour = event ? parseInt(event.endTime.split(":")[0]) : 17;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (event?.nameOption === "optional" || userName.trim()) {
+      setHasSubmittedName(true);
+    }
+  };
+
+  const handleSlotsChange = (slots: Set<string>) => {
+    setSelectedSlots(slots);
+    setHasUnsavedChanges(true);
+  };
+
+  // Generate a unique session ID for anonymous users
+  const getParticipantName = () => {
+    if (userName.trim()) return userName.trim();
+    
+    // For anonymous users, create a unique ID stored in sessionStorage
+    // so the same tab always uses the same anonymous ID
+    let anonId = sessionStorage.getItem(`scheduleit_anon_${event?.id}`);
+    if (!anonId) {
+      anonId = `Anonymous-${Math.random().toString(36).substring(2, 8)}`;
+      sessionStorage.setItem(`scheduleit_anon_${event?.id}`, anonId);
+    }
+    return anonId;
+  };
+
+  const handleSaveAvailability = async () => {
+    if (!event) return;
+    
+    setSaving(true);
+    const participantName = getParticipantName();
+    const availability: Availability = {
+      id: `${event.id}-${participantName}-${Date.now()}`,
+      eventId: event.id,
+      participantName,
+      slots: Array.from(selectedSlots),
+      submittedAt: new Date().toISOString(),
+    };
+    
+    const saved = await saveAvailability(availability);
+    if (saved) {
+      setHasUnsavedChanges(false);
+      await refreshGroupData();
+    }
+    setSaving(false);
+  };
+
+  // Format time for display
+  const formatTime = (time: string) => {
+    const hour = parseInt(time.split(":")[0]);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${hour12}:00 ${ampm}`;
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-border bg-accent mx-auto mb-4 animate-pulse"></div>
+          <p className="text-muted-foreground">Loading event...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not found state
+  if (notFound || !event) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 border-2 border-border bg-destructive/20 mx-auto mb-4 flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Event Not Found</h1>
+          <p className="text-muted-foreground mb-6">
+            This event doesn&apos;t exist or the link may have expired.
+          </p>
+          <Button onClick={() => router.push("/")}>
+            Create New Event
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -19,26 +176,85 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
       <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-              <Calendar className="w-5 h-5" />
+            <div className="w-8 h-8 bg-accent flex items-center justify-center border-2 border-border">
+              <Calendar className="w-4 h-4 text-accent-foreground" />
             </div>
             <div>
-              <h1 className="font-bold text-lg leading-tight">{eventName}</h1>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" /> 30 min slots
+              <h1 className="font-bold text-lg leading-tight">{event.name}</h1>
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> {formatTime(event.startTime)} - {formatTime(event.endTime)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Globe className="w-3 h-3" /> {event.timezone.split("/").pop()?.replace("_", " ")}
+                </span>
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2 hidden sm:flex">
-              <Share2 className="w-4 h-4" />
-              Share
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={handleCopyLink}
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              <span className="hidden sm:inline">{copied ? "Copied!" : "Copy Link"}</span>
             </Button>
-            <Button size="sm">Sign In</Button>
           </div>
         </div>
       </header>
+
+      {/* Name Entry Modal */}
+      {!hasSubmittedName && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-background border-2 border-border shadow-[8px_8px_0px_0px_var(--shadow-color)] p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 border-2 border-border bg-accent flex items-center justify-center">
+                <Users className="w-5 h-5 text-accent-foreground" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Enter Your Name</h2>
+                <p className="text-sm text-muted-foreground">
+                  {event.nameOption === "required" 
+                    ? "Your name is required to submit availability"
+                    : "Your name is optional"}
+                </p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleNameSubmit} className="space-y-4">
+              <Input
+                placeholder="Your name"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                className="h-12"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                {event.nameOption === "optional" && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => setHasSubmittedName(true)}
+                  >
+                    Skip
+                  </Button>
+                )}
+                <Button 
+                  type="submit" 
+                  className="flex-1"
+                  disabled={event.nameOption === "required" && !userName.trim()}
+                >
+                  Continue
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: User Input */}
@@ -46,15 +262,36 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
           "lg:col-span-4 flex flex-col gap-6",
           activeTab === "group" ? "hidden lg:flex" : "flex"
         )}>
-          <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm flex flex-col h-full">
-            <h2 className="font-semibold mb-4">Your Availability</h2>
-            <p className="text-sm text-muted-foreground mb-6">
+          <div className="bg-card border-2 border-border p-6 shadow-[4px_4px_0px_0px_var(--shadow-color)] flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold uppercase">Your Availability</h2>
+              {userName && (
+                <span className="text-xs font-mono bg-secondary px-2 py-1 border border-border">
+                  {userName}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
               Click and drag to paint your available times.
             </p>
             
-            <div className="flex-1 overflow-hidden">
-              <TimeGrid />
+            <div className="flex-1 overflow-hidden mb-4">
+              <TimeGrid 
+                dates={parsedDates.length > 0 ? parsedDates : undefined}
+                startHour={startHour}
+                endHour={endHour}
+                selectedSlots={selectedSlots}
+                onSlotsChange={handleSlotsChange}
+              />
             </div>
+            
+            <Button 
+              onClick={handleSaveAvailability}
+              disabled={!hasUnsavedChanges || saving || selectedSlots.size === 0}
+              className="w-full"
+            >
+              {saving ? "Saving..." : hasUnsavedChanges ? "Save Availability" : "Saved"}
+            </Button>
           </div>
         </div>
 
@@ -64,37 +301,65 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
           activeTab === "availability" ? "hidden lg:flex" : "flex"
         )}>
           {/* Best Time Card */}
-          <div className="bg-linear-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 flex items-center justify-between">
+          <div className="bg-accent/20 border-2 border-accent p-4 flex items-center justify-between shadow-[4px_4px_0px_0px_var(--shadow-color)]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-sm">
-                <Check className="w-5 h-5" />
+              <div className="w-10 h-10 bg-accent flex items-center justify-center border-2 border-border">
+                <Check className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <h3 className="font-semibold text-foreground">Best Time to Meet</h3>
-                <p className="text-sm text-muted-foreground">Friday, Nov 28 • 2:00 PM - 4:00 PM</p>
+                <h3 className="font-bold text-foreground">Best Time to Meet</h3>
+                <p className="text-sm text-muted-foreground">
+                  {bestTimes.length > 0 
+                    ? `${format(parse(bestTimes[0].date, "yyyy-MM-dd", new Date()), "EEEE, MMM d")} • ${formatTime(bestTimes[0].startTime)} - ${formatTime(bestTimes[0].endTime)}`
+                    : participantCount === 0 
+                      ? "No responses yet"
+                      : "Finding best time..."
+                  }
+                </p>
               </div>
             </div>
-            <Button size="sm" variant="secondary">View Details</Button>
+            <div className="flex items-center gap-2">
+              {bestTimes.length > 0 && (
+                <span className="text-sm font-mono bg-accent px-2 py-1 border-2 border-border text-accent-foreground">
+                  {bestTimes[0].count}/{participantCount}
+                </span>
+              )}
+              {bestTimes.length > 0 && event && (
+                <CalendarExport 
+                  eventName={event.name}
+                  bestTime={bestTimes[0]}
+                  timezone={event.timezone}
+                />
+              )}
+            </div>
           </div>
 
-          <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm h-full flex flex-col">
+          <div className="bg-card border-2 border-border p-6 shadow-[4px_4px_0px_0px_var(--shadow-color)] h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-semibold">Group Availability</h2>
-              <div className="flex items-center gap-2 text-sm">
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500"></span> 3/3
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-emerald-300"></span> 2/3
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-secondary"></span> 0/3
-                </span>
-              </div>
+              <h2 className="font-bold uppercase">Group Availability ({participantCount} responses)</h2>
+              {participantCount > 0 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-emerald-500 border border-border"></span> All
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-emerald-300 border border-border"></span> Some
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-secondary border border-border"></span> None
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-hidden">
-              <HeatMap />
+              <HeatMap 
+                dates={parsedDates.length > 0 ? parsedDates : undefined}
+                startHour={startHour}
+                endHour={endHour}
+                groupAvailability={groupAvailability}
+                totalParticipants={participantCount}
+              />
             </div>
           </div>
         </div>

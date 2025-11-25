@@ -7,16 +7,58 @@ import { Input } from "@/components/ui/input";
 import { Calendar, Clock, Users, ArrowRight, Coffee, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { CreateEventModal } from "@/components/create-event-modal";
+import { saveEvent, generateId } from "@/lib/storage";
+import type { EventConfig } from "@/lib/types";
 
 export default function Home() {
   const [eventName, setEventName] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
 
-  const handleCreateEvent = (e: React.FormEvent) => {
+  const handleCreateClick = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!eventName.trim()) return;
-    const slug = eventName.toLowerCase().replace(/\s+/g, "-");
-    router.push(`/event/${slug}`);
+    setIsModalOpen(true);
+  };
+
+  const handleCreateEvent = async (config: {
+    name: string;
+    dates: string[];
+    startTime: string;
+    endTime: string;
+    timezone: string;
+    nameOption: "required" | "optional" | "anonymous";
+  }) => {
+    setIsCreating(true);
+    
+    // Generate unique slug
+    const baseSlug = config.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const uniqueSlug = `${baseSlug}-${generateId().slice(0, 6)}`;
+    
+    // Create event config
+    const eventConfig: EventConfig = {
+      id: generateId(),
+      name: config.name,
+      slug: uniqueSlug,
+      dates: config.dates,
+      startTime: config.startTime,
+      endTime: config.endTime,
+      timezone: config.timezone,
+      nameOption: config.nameOption,
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Save to Supabase
+    const saved = await saveEvent(eventConfig);
+    
+    if (saved) {
+      // Navigate to event page
+      router.push(`/event/${uniqueSlug}`);
+    } else {
+      setIsCreating(false);
+      alert("Failed to create event. Please try again.");
+    }
   };
 
   return (
@@ -52,7 +94,7 @@ export default function Home() {
               </p>
 
               <form 
-                onSubmit={handleCreateEvent}
+                onSubmit={handleCreateClick}
                 className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto lg:mx-0 mt-8"
               >
                 <Input 
@@ -160,6 +202,13 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      <CreateEventModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateEvent}
+        initialName={eventName}
+      />
     </div>
   );
 }
