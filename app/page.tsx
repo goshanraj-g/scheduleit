@@ -20,6 +20,10 @@ export default function Home() {
 
   const handleCreateClick = (e: React.FormEvent) => {
     e.preventDefault();
+    // Blur any focused input to reset mobile zoom
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setIsModalOpen(true);
   };
 

@@ -87,6 +87,10 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
 
   const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Blur any focused input to reset mobile zoom
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     if (event?.nameOption === "optional" || userName.trim()) {
       setSaveError(null); // Clear any previous error
       setHasSubmittedName(true);
