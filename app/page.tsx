@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar, Clock, Users, ArrowRight, Coffee, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, sanitizeName } from "@/lib/utils";
 import { CreateEventModal } from "@/components/create-event-modal";
 import { saveEvent, generateId } from "@/lib/storage";
 import { checkRateLimit, getClientFingerprint } from "@/lib/rate-limit";
@@ -31,8 +31,15 @@ export default function Home() {
     timezone: string;
     nameOption: "required" | "optional" | "anonymous";
   }) => {
-    // Validate event name length
-    if (config.name.length > 100) {
+    // Sanitize event name
+    const sanitizedName = sanitizeName(config.name);
+    
+    // Validate event name
+    if (!sanitizedName) {
+      alert("Please enter a valid event name.");
+      return;
+    }
+    if (sanitizedName.length > 100) {
       alert("Event name must be 100 characters or less.");
       return;
     }
@@ -48,13 +55,13 @@ export default function Home() {
     setIsCreating(true);
     
     // Generate unique slug
-    const baseSlug = config.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 50);
+    const baseSlug = sanitizedName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 50);
     const uniqueSlug = `${baseSlug}-${generateId().slice(0, 6)}`;
     
     // Create event config
     const eventConfig: EventConfig = {
       id: generateId(),
-      name: config.name,
+      name: sanitizedName,
       slug: uniqueSlug,
       dates: config.dates,
       startTime: config.startTime,
