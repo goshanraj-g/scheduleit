@@ -75,9 +75,8 @@ export function TimeGrid({
 
   // Mouse handlers - support both click and drag (desktop only)
   const handleMouseDown = (dateIndex: number, timeIndex: number) => {
-    // Skip if this was triggered by a touch (mobile browsers fire both)
+    // Skip if this was triggered by a touch (mobile browsers fire both touch and mouse events)
     if (justTouched.current) {
-      justTouched.current = false;
       return;
     }
     
@@ -99,16 +98,23 @@ export function TimeGrid({
     // Mark that we're handling a touch event
     justTouched.current = true;
     
-    // Prevent default to stop scrolling and mouse event simulation
+    // Prevent default to stop mouse event simulation
     e.preventDefault();
+    e.stopPropagation();
     
     // Simple toggle on tap
     toggleSlot(dateIndex, timeIndex);
+  };
+  
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // Prevent simulated mouse events after touch
+    e.preventDefault();
+    e.stopPropagation();
     
-    // Reset the touch flag after a short delay
+    // Reset the touch flag after a delay (mouse events can be delayed)
     setTimeout(() => {
       justTouched.current = false;
-    }, 300);
+    }, 500);
   };
 
   // Global event listeners for mouse (desktop drag support)
@@ -168,6 +174,7 @@ export function TimeGrid({
                   onMouseDown={() => handleMouseDown(dateIndex, timeIndex)}
                   onMouseEnter={() => handleMouseEnter(dateIndex, timeIndex)}
                   onTouchStart={(e) => handleTouchStart(dateIndex, timeIndex, e)}
+                  onTouchEnd={handleTouchEnd}
                   className={cn(
                     "border-r border-b border-border/30 transition-colors cursor-pointer",
                     isMobile ? "h-8" : "h-6",
