@@ -118,28 +118,28 @@ export function getGoogleCalendarUrl(event: CalendarEvent): string {
 
 // Generate Outlook Calendar URL (Office 365 / Outlook.com)
 export function getOutlookCalendarUrl(event: CalendarEvent): string {
-  const { title, description, startDate, startTime, endTime, timezone } = event;
+  const { title, description, startDate, startTime, endTime } = event;
   
   // Parse dates
   const startDateTime = parse(`${startDate} ${startTime}`, 'yyyy-MM-dd HH:mm', new Date());
   const endDateTime = parse(`${startDate} ${endTime}`, 'yyyy-MM-dd HH:mm', new Date());
   
-  // Outlook uses ISO format
+  // Outlook uses ISO format (Z suffix for UTC)
   const formatOutlook = (date: Date) => date.toISOString();
   
   const params = new URLSearchParams({
     path: '/calendar/action/compose',
     rru: 'addevent',
-    subject: title,
     startdt: formatOutlook(startDateTime),
     enddt: formatOutlook(endDateTime),
+    subject: title,
   });
   
   if (description) {
     params.set('body', description);
   }
   
-  return `https://outlook.live.com/calendar/deeplink/compose?${params.toString()}`;
+  return `https://outlook.office.com/calendar/0/deeplink/compose?${params.toString()}`;
 }
 
 // Generate Outlook Desktop URL (for installed Outlook)
@@ -201,13 +201,13 @@ export function getOutlookMobileUrl(event: CalendarEvent): string {
   const startDateTime = parse(`${startDate} ${startTime}`, 'yyyy-MM-dd HH:mm', new Date());
   const endDateTime = parse(`${startDate} ${endTime}`, 'yyyy-MM-dd HH:mm', new Date());
   
-  // Outlook mobile uses the same URL structure
+  // Outlook uses the same URL structure
   const params = new URLSearchParams({
     path: '/calendar/action/compose',
     rru: 'addevent',
-    subject: title,
     startdt: startDateTime.toISOString(),
     enddt: endDateTime.toISOString(),
+    subject: title,
   });
   
   if (description) {
@@ -219,7 +219,7 @@ export function getOutlookMobileUrl(event: CalendarEvent): string {
   }
   
   // On mobile, this URL opens the Outlook app if installed
-  return `https://outlook.live.com/calendar/deeplink/compose?${params.toString()}`;
+  return `https://outlook.office.com/calendar/0/deeplink/compose?${params.toString()}`;
 }
 
 // Get the best calendar option for the current device
