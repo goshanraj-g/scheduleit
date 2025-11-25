@@ -199,28 +199,109 @@ export async function findBestTimeSlots(
 
   if (totalParticipants === 0) return [];
 
-  // Convert to array and sort by count
-  const slots = Object.entries(groupAvailability.slots)
-    .map(([key, data]) => {
-      // Key format: "YYYY-MM-DDTHH:mm"
-      const [date, time] = key.split('T');
-      const [hour, minute] = time.split(':').map(Number);
-      // Each slot is 30 minutes: 00 -> 30, 30 -> 00 (next hour)
-      const endMinute = minute === 0 ? 30 : 0;
-      const endHour = minute === 0 ? hour : hour + 1;
+  // Group slots by date and find continuous blocks
+  const slotsByDate: Record<string, { time: string; count: number; participants: string[] }[]> = {};
+  
+  Object.entries(groupAvailability.slots).forEach(([key, data]) => {
+    const [date, time] = key.split('T');
+    if (!slotsByDate[date]) {
+      slotsByDate[date] = [];
+    }
+    slotsByDate[date].push({ time, count: data.count, participants: data.participants });
+  });
 
-      return {
+  // Sort slots within each date by time
+  Object.keys(slotsByDate).forEach(date => {
+    slotsByDate[date].sort((a, b) => a.time.localeCompare(b.time));
+  });
+
+  // Helper to get the end time of a 30-min slot
+  const getSlotEndTime = (startTime: string): string => {
+    const [hour, minute] = startTime.split(':').map(Number);
+    const endMinute = minute === 0 ? 30 : 0;
+    const endHour = minute === 0 ? hour : hour + 1;
+    return `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+  };
+
+  // Find continuous blocks where everyone (or most people) are available
+  const blocks: BestTimeSlot[] = [];
+
+  Object.entries(slotsByDate).forEach(([date, slots]) => {
+    let blockStartTime: string | null = null;
+    let blockEndTime: string | null = null;
+    let blockCount = 0;
+    let blockParticipants: string[] = [];
+
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      const slotEnd = getSlotEndTime(slot.time);
+      
+      if (blockStartTime !== null && blockEndTime !== null) {
+        // Check if this slot is consecutive (starts where previous ended) 
+        // AND has the same availability count
+        const isConsecutive = slot.time === blockEndTime;
+        const sameCount = slot.count === blockCount;
+        
+        if (isConsecutive && sameCount) {
+          // Extend the current block
+          blockEndTime = slotEnd;
+          // Keep intersection of participants
+          blockParticipants = blockParticipants.filter(p => slot.participants.includes(p));
+        } else {
+          // Save current block and start new one
+          blocks.push({
+            date,
+            startTime: blockStartTime,
+            endTime: blockEndTime,
+            count: blockCount,
+            participants: blockParticipants,
+          });
+          
+          // Start new block with this slot
+          blockStartTime = slot.time;
+          blockEndTime = slotEnd;
+          blockCount = slot.count;
+          blockParticipants = [...slot.participants];
+        }
+      } else {
+        // Start first block
+        blockStartTime = slot.time;
+        blockEndTime = slotEnd;
+        blockCount = slot.count;
+        blockParticipants = [...slot.participants];
+      }
+    }
+
+    // Don't forget the last block
+    if (blockStartTime !== null && blockEndTime !== null) {
+      blocks.push({
         date,
-        startTime: time,
-        endTime: `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`,
-        count: data.count,
-        participants: data.participants,
-      };
-    })
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
+        startTime: blockStartTime,
+        endTime: blockEndTime,
+        count: blockCount,
+        participants: blockParticipants,
+      });
+    }
+  });
 
-  return slots;
+  // Calculate duration for each block in minutes
+  const blocksWithDuration = blocks.map(block => {
+    const [startHour, startMin] = block.startTime.split(':').map(Number);
+    const [endHour, endMin] = block.endTime.split(':').map(Number);
+    const duration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+    return { ...block, duration };
+  });
+
+  // Sort by: 1) highest count (most participants), 2) longest duration, 3) earliest date/time
+  blocksWithDuration.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    if (b.duration !== a.duration) return b.duration - a.duration;
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.startTime.localeCompare(b.startTime);
+  });
+
+  // Return top blocks (remove duration from output)
+  return blocksWithDuration.slice(0, limit).map(({ duration, ...block }) => block);
 }
 
 export async function getParticipantCount(eventId: string): Promise<number> {
