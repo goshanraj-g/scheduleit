@@ -1,4 +1,4 @@
--- ScheduleIt Database Schema
+-- WhenWorks Database Schema
 -- Run this in your Supabase SQL Editor (https://supabase.com/dashboard/project/witxholkjwbdczguntav/sql)
 
 -- Events table

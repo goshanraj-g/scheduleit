@@ -1,4 +1,4 @@
-// Types for ScheduleIt
+// Types for WhenWorks
 
 export interface EventConfig {
   id: string;

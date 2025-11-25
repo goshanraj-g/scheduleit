@@ -23,13 +23,13 @@ export function generateICS(event: CalendarEvent): string {
   // Format for ICS (YYYYMMDDTHHmmss)
   const formatICS = (date: Date) => format(date, "yyyyMMdd'T'HHmmss");
   
-  const uid = `${Date.now()}@scheduleit.app`;
+  const uid = `${Date.now()}@whenworks.app`;
   const now = formatICS(new Date());
   
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//ScheduleIt//Meeting Scheduler//EN',
+    'PRODID:-//WhenWorks//Meeting Scheduler//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',

@@ -255,18 +255,13 @@ export function CreateEventModal({
                     {[
                       {
                         value: "required" as const,
-                        label: "Name Required",
-                        description: "Participants must enter their name",
-                      },
-                      {
-                        value: "optional" as const,
-                        label: "Name Optional",
-                        description: "Participants can choose to be anonymous",
+                        label: "Names Required",
+                        description: "Participants must enter their name to submit",
                       },
                       {
                         value: "anonymous" as const,
-                        label: "Fully Anonymous",
-                        description: "No names, just availability counts",
+                        label: "Anonymous",
+                        description: "No names needed, just availability counts",
                       },
                     ].map((option) => (
                       <button

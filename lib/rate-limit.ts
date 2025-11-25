@@ -76,10 +76,10 @@ export function checkRateLimit(
 export function getClientFingerprint(): string {
   if (typeof window === 'undefined') return '';
   
-  let fingerprint = localStorage.getItem('scheduleit_fingerprint');
+  let fingerprint = localStorage.getItem('whenworks_fingerprint');
   if (!fingerprint) {
     fingerprint = `client_${crypto.randomUUID()}`;
-    localStorage.setItem('scheduleit_fingerprint', fingerprint);
+    localStorage.setItem('whenworks_fingerprint', fingerprint);
   }
   return fingerprint;
 }
@@ -91,7 +91,7 @@ export function getClientFingerprint(): string {
 export function getSessionToken(eventId: string): string {
   if (typeof window === 'undefined') return '';
   
-  const key = `scheduleit_session_${eventId}`;
+  const key = `whenworks_session_${eventId}`;
   let token = sessionStorage.getItem(key);
   if (!token) {
     token = crypto.randomUUID();

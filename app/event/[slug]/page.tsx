@@ -103,10 +103,10 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     
     // For anonymous users, create a unique ID stored in sessionStorage
     // so the same tab always uses the same anonymous ID
-    let anonId = sessionStorage.getItem(`scheduleit_anon_${event?.id}`);
+    let anonId = sessionStorage.getItem(`whenworks_anon_${event?.id}`);
     if (!anonId) {
       anonId = `Anonymous-${crypto.randomUUID().slice(0, 8)}`;
-      sessionStorage.setItem(`scheduleit_anon_${event?.id}`, anonId);
+      sessionStorage.setItem(`whenworks_anon_${event?.id}`, anonId);
     }
     return anonId;
   };

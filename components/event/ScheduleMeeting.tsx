@@ -147,7 +147,7 @@ export function ScheduleMeeting({
     if (!selectedSlot) return null;
     return {
       title: meetingTitle,
-      description: meetingNotes || `Meeting scheduled via ScheduleIt.\n\nParticipants: ${selectedSlot.participants.join(', ')}`,
+      description: meetingNotes || `Meeting scheduled via WhenWorks.\n\nParticipants: ${selectedSlot.participants.join(', ')}`,
       startDate: selectedSlot.date,
       startTime: selectedSlot.startTime,
       endTime: selectedSlot.endTime,
@@ -222,7 +222,7 @@ Date: ${dateFormatted}
 Time: ${timeFormatted}${meetingLocation ? `\nLocation: ${meetingLocation}` : ''}${meetingNotes ? `\n\n${meetingNotes}` : ''}
 
 --
-Scheduled via ScheduleIt`;
+Scheduled via WhenWorks`;
 
     // Use Gmail compose URL - opens in new tab
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailList)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ScheduleIt",
-  description: "The modern alternative to When2meet",
+  title: "WhenWorks",
+  description: "The modern alternative to When2meet - Find the perfect meeting time",
 };
 
 export default function RootLayout({
