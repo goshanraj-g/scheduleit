@@ -126,7 +126,7 @@ export function TimeGrid({
   }, [handleTouchMove, handleTouchEnd]);
 
   return (
-    <div className="select-none overflow-x-auto pb-4 touch-none" ref={gridRef}>
+    <div className="select-none overflow-x-auto pb-4" ref={gridRef}>
       <div 
         className="grid" 
         style={{ 
@@ -162,6 +162,7 @@ export function TimeGrid({
                   data-slot
                   data-date-index={dateIndex}
                   data-time-index={timeIndex}
+                  onClick={() => toggleSlot(dateIndex, timeIndex)}
                   onMouseDown={() => handleMouseDown(dateIndex, timeIndex)}
                   onMouseEnter={() => handleMouseEnter(dateIndex, timeIndex)}
                   onTouchStart={(e) => handleTouchStart(dateIndex, timeIndex, e)}
