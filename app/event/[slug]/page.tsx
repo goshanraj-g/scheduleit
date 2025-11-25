@@ -12,11 +12,13 @@ import { ScheduleMeeting } from "@/components/event/ScheduleMeeting";
 import { format, parse } from "date-fns";
 import { getEvent, saveAvailability, calculateGroupAvailability, findBestTimeSlots, getParticipantCount } from "@/lib/storage";
 import { getSessionToken } from "@/lib/rate-limit";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { EventConfig, Availability, GroupAvailability, BestTimeSlot } from "@/lib/types";
 
 export default function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const router = useRouter();
+  const isMobile = useIsMobile();
   
   const [event, setEvent] = useState<EventConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -291,7 +293,9 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
               )}
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Click and drag to paint your available times.
+              {isMobile 
+                ? "Tap to select your available times." 
+                : "Click and drag to paint your available times."}
             </p>
             
             <div className="flex-1 overflow-hidden mb-4">
