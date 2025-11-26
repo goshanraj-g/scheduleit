@@ -40,8 +40,12 @@ export function TimeGrid({
   const dates = propDates || Array.from({ length: 5 }).map((_, i) => addDays(new Date(), i));
 
   // Generate time slots (30 min intervals)
+  // Ensure valid range to prevent empty grid
+  const safeStartHour = Math.max(0, Math.min(23, startHour));
+  const safeEndHour = Math.max(safeStartHour + 1, Math.min(24, endHour));
+  
   const timeSlots: { hour: number; minute: number }[] = [];
-  for (let h = startHour; h < endHour; h++) {
+  for (let h = safeStartHour; h < safeEndHour; h++) {
     timeSlots.push({ hour: h, minute: 0 });
     timeSlots.push({ hour: h, minute: 30 });
   }

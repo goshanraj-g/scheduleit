@@ -68,9 +68,12 @@ export function ScheduleMeeting({
     setMobileOS(getMobileOS());
   }, []);
 
-  // Generate time slots
+  // Generate time slots with safety bounds
+  const safeStartHour = Math.max(0, Math.min(23, startHour));
+  const safeEndHour = Math.max(safeStartHour + 1, Math.min(24, endHour));
+  
   const timeSlots: { hour: number; minute: number }[] = [];
-  for (let h = startHour; h < endHour; h++) {
+  for (let h = safeStartHour; h < safeEndHour; h++) {
     timeSlots.push({ hour: h, minute: 0 });
     timeSlots.push({ hour: h, minute: 30 });
   }

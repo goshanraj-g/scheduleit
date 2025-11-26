@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, use, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,20 @@ import { cn, sanitizeName } from "@/lib/utils";
 import { TimeGrid } from "@/components/event/TimeGrid";
 import { HeatMap } from "@/components/event/HeatMap";
 import { ScheduleMeeting } from "@/components/event/ScheduleMeeting";
-import { format, parse } from "date-fns";
-import { getEvent, saveAvailability, calculateGroupAvailability, findBestTimeSlots, getParticipantCount } from "@/lib/storage";
+import { format, parse, addDays } from "date-fns";
+import { getEvent, saveAvailability, calculateGroupAvailability, findBestTimeSlots, getParticipantCount, getParticipantAvailability } from "@/lib/storage";
 import { getSessionToken } from "@/lib/rate-limit";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  getVisitorTimezone,
+  convertEventHours,
+  convertTime,
+  convertSlotsToEventTimezone,
+  convertSlotsToVisitorTimezone,
+  convertGroupAvailabilityToVisitorTimezone,
+  timezonesMatch,
+  getTimezoneLabel,
+} from "@/lib/timezone";
 import type { EventConfig, Availability, GroupAvailability, BestTimeSlot } from "@/lib/types";
 
 export default function EventPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -37,6 +47,13 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
   const [groupAvailability, setGroupAvailability] = useState<GroupAvailability | null>(null);
   const [bestTimes, setBestTimes] = useState<BestTimeSlot[]>([]);
   const [participantCount, setParticipantCount] = useState(0);
+  
+  // Timezone state - detect visitor's timezone (client-side only)
+  const [visitorTimezone, setVisitorTimezone] = useState<string | null>(null);
+  
+  useEffect(() => {
+    setVisitorTimezone(getVisitorTimezone());
+  }, []);
 
   // Load event from storage
   useEffect(() => {
@@ -76,10 +93,81 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     }
   }, [event, refreshGroupData]);
 
-  // Parse event data
-  const parsedDates = event?.dates.map(d => parse(d, "yyyy-MM-dd", new Date())) || [];
-  const startHour = event ? parseInt(event.startTime.split(":")[0]) : 9;
-  const endHour = event ? parseInt(event.endTime.split(":")[0]) : 17;
+  // Parse event data (in event timezone)
+  const eventTimezone = event?.timezone || "UTC";
+  const eventStartHour = event ? parseInt(event.startTime.split(":")[0]) : 9;
+  const eventEndHour = event ? parseInt(event.endTime.split(":")[0]) : 17;
+  
+  // Check if we need timezone conversion
+  const needsConversion = visitorTimezone !== null && !timezonesMatch(eventTimezone, visitorTimezone);
+  
+  // Convert hours and dates to visitor timezone for display
+  const { displayStartHour, displayEndHour, displayDates } = useMemo(() => {
+    const baseDates = event?.dates.map(d => parse(d, "yyyy-MM-dd", new Date())) || [];
+    
+    if (!visitorTimezone || !needsConversion || baseDates.length === 0) {
+      return {
+        displayStartHour: eventStartHour,
+        displayEndHour: eventEndHour,
+        displayDates: baseDates,
+      };
+    }
+    
+    const referenceDate = baseDates[0];
+    const converted = convertEventHours(referenceDate, eventStartHour, eventEndHour, eventTimezone, visitorTimezone);
+    
+    const adjustedDates = converted.dayOffset !== 0
+      ? baseDates.map(d => addDays(d, converted.dayOffset))
+      : baseDates;
+    
+    return {
+      displayStartHour: converted.startHour,
+      displayEndHour: converted.endHour,
+      displayDates: adjustedDates,
+    };
+  }, [event?.dates, eventStartHour, eventEndHour, eventTimezone, visitorTimezone, needsConversion]);
+  
+  // Convert group availability to visitor timezone
+  const displayGroupAvailability = useMemo(() => {
+    if (!groupAvailability || !visitorTimezone || !needsConversion) {
+      return groupAvailability;
+    }
+    return convertGroupAvailabilityToVisitorTimezone(groupAvailability, eventTimezone, visitorTimezone);
+  }, [groupAvailability, eventTimezone, visitorTimezone, needsConversion]);
+  
+  // Convert best times to visitor timezone
+  const displayBestTimes = useMemo(() => {
+    if (!visitorTimezone || !needsConversion || bestTimes.length === 0) {
+      return bestTimes;
+    }
+    
+    return bestTimes.map(slot => {
+      const [startH, startM] = slot.startTime.split(":").map(Number);
+      const [endH, endM] = slot.endTime.split(":").map(Number);
+      const date = parse(slot.date, "yyyy-MM-dd", new Date());
+      
+      const startConverted = convertTime(date, startH, startM, eventTimezone, visitorTimezone);
+      const endConverted = convertTime(date, endH, endM, eventTimezone, visitorTimezone);
+      const newDate = addDays(date, startConverted.dayOffset);
+      
+      return {
+        ...slot,
+        date: format(newDate, "yyyy-MM-dd"),
+        startTime: `${String(startConverted.hour).padStart(2, "0")}:${String(startConverted.minute).padStart(2, "0")}`,
+        endTime: `${String(endConverted.hour).padStart(2, "0")}:${String(endConverted.minute).padStart(2, "0")}`,
+      };
+    });
+  }, [bestTimes, eventTimezone, visitorTimezone, needsConversion]);
+  
+  // Display timezone label
+  const displayTimezone = needsConversion && visitorTimezone
+    ? getTimezoneLabel(visitorTimezone)
+    : getTimezoneLabel(eventTimezone);
+  
+  // State for loading existing availability
+  const [loadingExisting, setLoadingExisting] = useState(false);
+  const [hasExistingAvailability, setHasExistingAvailability] = useState(false);
+  const [existingSessionToken, setExistingSessionToken] = useState<string | null>(null);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -87,14 +175,36 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleNameSubmit = (e: React.FormEvent) => {
+  const handleNameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Blur any focused input to reset mobile zoom
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
     if (event?.nameOption === "optional" || userName.trim()) {
-      setSaveError(null); // Clear any previous error
+      setSaveError(null);
+      
+      // Try to load existing availability for this user
+      if (event && userName.trim()) {
+        setLoadingExisting(true);
+        const existing = await getParticipantAvailability(event.id, userName.trim());
+        if (existing && existing.slots.length > 0) {
+          // Convert from event timezone to visitor timezone for display
+          const slotsSet = visitorTimezone && needsConversion
+            ? convertSlotsToVisitorTimezone(existing.slots, eventTimezone, visitorTimezone)
+            : new Set(existing.slots);
+          setSelectedSlots(slotsSet);
+          setHasExistingAvailability(true);
+          // Store the existing session token so we can use it when saving
+          if (existing.sessionToken) {
+            setExistingSessionToken(existing.sessionToken);
+          }
+          // Don't mark as unsaved since these are their existing selections
+          setHasUnsavedChanges(false);
+        }
+        setLoadingExisting(false);
+      }
+      
       setHasSubmittedName(true);
     }
   };
@@ -126,13 +236,19 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     setSaving(true);
     setSaveError(null);
     const participantName = getParticipantName();
-    const sessionToken = getSessionToken(event.id);
+    // Use existing session token if we loaded their availability, otherwise get a new one
+    const sessionToken = existingSessionToken || getSessionToken(event.id);
+    
+    // Convert slots from visitor timezone back to event timezone for storage
+    const slotsToSave = visitorTimezone && needsConversion
+      ? convertSlotsToEventTimezone(selectedSlots, eventTimezone, visitorTimezone)
+      : selectedSlots;
     
     const availability: Availability = {
       id: `${event.id}-${participantName}-${Date.now()}`,
       eventId: event.id,
       participantName,
-      slots: Array.from(selectedSlots),
+      slots: Array.from(slotsToSave),
       submittedAt: new Date().toISOString(),
     };
     
@@ -149,7 +265,7 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     setSaving(false);
   };
 
-  // Format time for display
+  // Format time for display (from string like "14:00")
   const formatTime = (time: string) => {
     const [hourStr, minuteStr] = time.split(":");
     const hour = parseInt(hourStr);
@@ -157,6 +273,13 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
     const ampm = hour >= 12 ? "PM" : "AM";
     const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
     return `${hour12}:${minute} ${ampm}`;
+  };
+  
+  // Format hour for display (from number)
+  const formatHour = (hour: number) => {
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${hour12}:00 ${ampm}`;
   };
 
   // Loading state
@@ -202,12 +325,12 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
             </div>
             <div>
               <h1 className="font-bold text-lg leading-tight">{event.name}</h1>
-              <p className="text-xs text-muted-foreground flex items-center gap-2">
+              <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                 <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {formatTime(event.startTime)} - {formatTime(event.endTime)}
+                  <Clock className="w-3 h-3" /> {formatHour(displayStartHour)} - {formatHour(displayEndHour)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Globe className="w-3 h-3" /> {event.timezone.split("/").pop()?.replace("_", " ")}
+                  <Globe className="w-3 h-3" /> {displayTimezone}
                 </span>
               </p>
             </div>
@@ -293,16 +416,21 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
               )}
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              {isMobile 
-                ? "Tap to select your available times." 
-                : "Click and drag to paint your available times."}
+              {loadingExisting 
+                ? "Loading your previous selections..."
+                : hasExistingAvailability && !hasUnsavedChanges
+                  ? "Your previous selections are shown. Make changes and save to update."
+                  : isMobile 
+                    ? "Tap to select your available times." 
+                    : "Click and drag to paint your available times."
+              }
             </p>
             
             <div className="flex-1 overflow-hidden mb-4">
               <TimeGrid 
-                dates={parsedDates.length > 0 ? parsedDates : undefined}
-                startHour={startHour}
-                endHour={endHour}
+                dates={displayDates.length > 0 ? displayDates : undefined}
+                startHour={displayStartHour}
+                endHour={displayEndHour}
                 selectedSlots={selectedSlots}
                 onSlotsChange={handleSlotsChange}
                 isMobile={isMobile}
@@ -326,7 +454,12 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
               disabled={!hasUnsavedChanges || saving || selectedSlots.size === 0}
               className="w-full"
             >
-              {saving ? "Saving..." : hasUnsavedChanges ? "Save Availability" : "Saved"}
+              {saving 
+                ? "Saving..." 
+                : hasUnsavedChanges 
+                  ? (hasExistingAvailability ? "Update Availability" : "Save Availability")
+                  : "Saved"
+              }
             </Button>
           </div>
         </div>
@@ -346,10 +479,10 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
                 <div className="min-w-0">
                   <h3 className="font-bold text-foreground">Best Time to Meet</h3>
                   <p className="text-sm text-muted-foreground truncate">
-                    {bestTimes.length > 0 
-                      ? bestTimes[0].count === participantCount
-                        ? `Everyone's free ${format(parse(bestTimes[0].date, "yyyy-MM-dd", new Date()), "EEE, MMM d")} • ${formatTime(bestTimes[0].startTime)} - ${formatTime(bestTimes[0].endTime)}`
-                        : `${bestTimes[0].count} available ${format(parse(bestTimes[0].date, "yyyy-MM-dd", new Date()), "EEE, MMM d")} • ${formatTime(bestTimes[0].startTime)} - ${formatTime(bestTimes[0].endTime)}`
+                    {displayBestTimes.length > 0 
+                      ? displayBestTimes[0].count === participantCount
+                        ? `Everyone's free ${format(parse(displayBestTimes[0].date, "yyyy-MM-dd", new Date()), "EEE, MMM d")} • ${formatTime(displayBestTimes[0].startTime)} - ${formatTime(displayBestTimes[0].endTime)}`
+                        : `${displayBestTimes[0].count} available ${format(parse(displayBestTimes[0].date, "yyyy-MM-dd", new Date()), "EEE, MMM d")} • ${formatTime(displayBestTimes[0].startTime)} - ${formatTime(displayBestTimes[0].endTime)}`
                       : participantCount === 0 
                         ? "No responses yet"
                         : "Finding best time..."
@@ -358,18 +491,18 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
                 </div>
               </div>
               <div className="flex items-center gap-2 ml-auto sm:ml-0">
-                {bestTimes.length > 0 && (
+                {displayBestTimes.length > 0 && (
                   <span className="text-sm font-mono bg-accent px-2 py-1 border-2 border-border text-accent-foreground">
-                    {bestTimes[0].count}/{participantCount}
+                    {displayBestTimes[0].count}/{participantCount}
                   </span>
                 )}
-                {participantCount > 0 && event && parsedDates.length > 0 && (
+                {participantCount > 0 && event && displayDates.length > 0 && (
                   <ScheduleMeeting 
                     eventName={event.name}
-                    dates={parsedDates}
-                    startHour={startHour}
-                    endHour={endHour}
-                    groupAvailability={groupAvailability}
+                    dates={displayDates}
+                    startHour={displayStartHour}
+                    endHour={displayEndHour}
+                    groupAvailability={displayGroupAvailability}
                     timezone={event.timezone}
                     totalParticipants={participantCount}
                   />
@@ -398,10 +531,10 @@ export default function EventPage({ params }: { params: Promise<{ slug: string }
 
             <div className="flex-1 overflow-hidden">
               <HeatMap 
-                dates={parsedDates.length > 0 ? parsedDates : undefined}
-                startHour={startHour}
-                endHour={endHour}
-                groupAvailability={groupAvailability}
+                dates={displayDates.length > 0 ? displayDates : undefined}
+                startHour={displayStartHour}
+                endHour={displayEndHour}
+                groupAvailability={displayGroupAvailability}
                 totalParticipants={participantCount}
               />
             </div>
